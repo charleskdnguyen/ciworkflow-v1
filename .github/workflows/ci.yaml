@@ -1,0 +1,70 @@
+name: CI/CD
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  gke_project_prd: prd
+  gke_project_stg: stg
+  project_name: ciworkflowv1
+
+jobs:
+  test:
+    name: Test
+    runs-on: [ubuntu-latest]
+    permissions: write-all
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+      - name: Running tests
+        run: |
+          go test -timeout 30s ./...
+  build:
+    name: Build Image
+    runs-on: [ubuntu-latest]
+    needs: [ test ]
+    permissions: write-all
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Building image
+        run: |
+          echo "Building image..."
+          docker build -t ${{ env.project_name }} .
+          echo "Image built"
+  deploy_stg:
+    name: Deploy Staging
+    runs-on: [ubuntu-latest]
+    permissions: write-all
+    needs: [test, build]
+    if: (github.event_name == 'pull_request' && github.event.draft == false) || github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Deploy
+        run: |
+          echo "Deploying to staging..."
+          echo "Deployed to staging"
+#        uses: ci.yaml # If using another workflow
+#        with:
+#          project_name: ${{ env.project_name }}
+  deploy_prd:
+    name: Deploy Production
+    runs-on: [ubuntu-latest]
+    permissions: write-all
+    needs: [deploy_stg]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Deploy
+        run: |
+          echo "Deploying to production..."
+          echo "Deployed to production"
+
