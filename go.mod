@@ -1,6 +1,6 @@
 module awesomeProject
 
-go 1.22
+go 1.21.9
 
 require (
 	golang.org/x/net v0.24.0 // indirect
